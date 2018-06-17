@@ -94,9 +94,7 @@ nms.on('doneConnect', (id, args) => {
 
 // On Twitch message
 twitchClient.on("chat", function (channel, user, message, self) {
-    console.log('self ' + self);
-    console.log('user.mod ' + user.mod);
-    if (self || user.mod) {
+    if (self || user.mod || user.badges.broadcasters == '1' || user.username == twitchClient.getUsername()) {
         console.log('Parsing message from self or mod');
         // If the message is the switch scene command
         if (message.startsWith('!scene ')) {
