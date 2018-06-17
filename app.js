@@ -4,6 +4,8 @@ const NodeMediaServer = require('node-media-server'),
     tmi = require("tmi.js"),
     OBSWebSocket = require('obs-websocket-js');
 
+let userEndedStream = false;
+
 // Configure Node media server
 const nmsConfig = {
   rtmp: {
@@ -62,27 +64,65 @@ twitchClient.connect();
 // On RTMP connection to server
 nms.on('postConnect', (id, args) => {
     console.log('[NodeEvent on postConnect]', `id=${id} args=${JSON.stringify(args)}`);
+    let toScene = 'IRL Stream';
+    userEndedStream = false;
+
+    obs.startStreaming().then(() => {
+        console.log('STREAM STARTED');
+        return obs.setCurrentScene(toScene);
+    }).then(() => {
+        console.log('Set current scene to ' + toScene);
+    }).catch(err => {
+        console.log('Error starting stream: ' + err);
+    });
 });
 
-// On RTMP connection to server
+// On RTMP disconnect from server
 nms.on('doneConnect', (id, args) => {
     console.log('[NodeEvent on doneConnect]', `id=${id} args=${JSON.stringify(args)}`);
+
+    if (!userEndedStream) {
+        console.log('RTMP connection lost without disconnect command');
+        let toScene = 'Technical Difficulties';
+        obs.setCurrentScene(toScene).then(() => {
+            console.log('Set current scene to ' + toScene);
+        }).catch(err => {
+            console.log('Error changing scenes: ' + err);
+        });
+    }
 });
 
 // On Twitch message
-client.on("chat", function (channel, user, message, self) {
+twitchClient.on("chat", function (channel, user, message, self) {
     if (self || user.mod) {
         console.log(user.display-name + ': ' + message);
+        // If the message is the switch scene command
         if (message.startsWith('!scene ')) {
             let toScene = message.slice(7);
+            obs.setCurrentScene(toScene).then(() => {
+                console.log('Set current scene to ' + toScene);
+            }).catch(err => {
+                console.log('Error changing scenes: ' + err);
+            });
+        // If the message is the end stream command
         } else if (message.startsWith('!disconnect')) {
             let streamStatus = obs.getStreamingStatus();
             streamStatus.then(function (err, data) {
                 if (err) {
                     console.error('OBS Socket Error:', err);
                 } else if (data.streaming) {
-                    obs.stopStreaming();
+                    userEndedStream = true;
+                    obs.stopStreaming().then(() => {
+                        console.log('STREAM STOPPED');
+                        return twitchClient.action('banzaibaby', 'Thanks for joining us. See you next stream!')
+                    }).then(function(data) {
+                            console.log('Goodbye message sent to #' + data);
+                    }).catch(err => {
+                        console.log('Error ending stream: ' + err);
+                    });
                 }
+            }).catch(err => {
+                console.log(err);
             });
         }
     }
