@@ -34,7 +34,7 @@ obs.connect({
     return obs.getSceneList();
 }).then((sceneList) => {
     let sceneListNames = 'Available Scenes: ';
-    for (let scene of sceneList) {
+    for (let scene of sceneList.scenes) {
         sceneListNames += scene.name + ', ';
     }
     sceneListNames = sceneListNames.slice(0, -2);
@@ -94,8 +94,10 @@ nms.on('doneConnect', (id, args) => {
 
 // On Twitch message
 twitchClient.on("chat", function (channel, user, message, self) {
+    console.log('self ' + self);
+    console.log('user.mod ' + user.mod);
     if (self || user.mod) {
-        console.log(user.display-name + ': ' + message);
+        console.log('Parsing message from self or mod');
         // If the message is the switch scene command
         if (message.startsWith('!scene ')) {
             let toScene = message.slice(7);
