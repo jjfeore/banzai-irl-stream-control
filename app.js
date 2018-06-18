@@ -1,7 +1,7 @@
 require('dotenv').config();
 
 const NodeMediaServer = require('node-media-server'),
-    tmi = require("tmi.js"),
+    tmi = require('tmi.js'),
     OBSWebSocket = require('obs-websocket-js');
 
 let userEndedStream = false;
@@ -40,7 +40,7 @@ obs.connect({
     sceneListNames = sceneListNames.slice(0, -2);
     console.log(sceneListNames);
 }).catch(err => {
-    console.log(err);
+    console.log('Error on OBS Websocket connect: ' + err);
 });
 
 // Configure Twitch chat client
@@ -55,7 +55,7 @@ const twitchOptions = {
         username: process.env.TWITCHUSER,
         password: process.env.TWITCHPASS
     },
-    channels: ["#banzaibaby"]
+    channels: ['#banzaibaby']
 };
 
 const twitchClient = new tmi.client(twitchOptions);
@@ -67,13 +67,12 @@ nms.on('postConnect', (id, args) => {
     let toScene = 'IRL';
     userEndedStream = false;
 
-    obs.startStreaming().then(() => {
-        console.log('STREAM STARTED');
-        return obs.setCurrentScene({'scene-name': toScene});
-    }).then(() => {
-        console.log('Set current scene to ' + toScene);
-    }).catch(err => {
-        console.log('Error starting stream: ' + err);
+    obs.getStreamingStatus().then(function (data) {
+        if (data.streaming) {
+            setNewScene(toScene);
+        } else {
+            startNewStream(toScene);
+        }
     });
 });
 
@@ -83,27 +82,17 @@ nms.on('doneConnect', (id, args) => {
 
     if (!userEndedStream) {
         console.log('RTMP connection lost without disconnect command');
-        let toScene = 'Technical Difficulties';
-        obs.setCurrentScene({'scene-name': toScene}).then(() => {
-            console.log('Set current scene to ' + toScene);
-        }).catch(err => {
-            console.log('Error changing scenes: ' + err);
-        });
+        setNewScene('Technical Difficulties');
     }
 });
 
 // On Twitch message
-twitchClient.on("chat", function (channel, user, message, self) {
+twitchClient.on('chat', function (channel, user, message, self) {
     if (self || user.mod || user.badges.broadcasters == '1' || user.username == twitchClient.getUsername()) {
         console.log('Parsing message from self or mod');
         // If the message is the switch scene command
         if (message.toLowerCase().startsWith('!scene ')) {
-            let toScene = message.slice(7);
-            obs.setCurrentScene({'scene-name': toScene}).then(() => {
-                console.log('Set current scene to ' + toScene);
-            }).catch(err => {
-                console.log('Error changing scenes: ' + err);
-            });
+            setNewScene(message.slice(7));
         // If the message is the end stream command
         } else if (message.toLowerCase().startsWith('!disconnect')) {
             let streamStatus = obs.getStreamingStatus();
@@ -112,7 +101,7 @@ twitchClient.on("chat", function (channel, user, message, self) {
                     userEndedStream = true;
                     obs.stopStreaming().then(() => {
                         console.log('STREAM STOPPED');
-                        return twitchClient.action('banzaibaby', 'Thanks for joining us. See you next stream!')
+                        return twitchClient.say('banzaibaby', 'Thanks for joining us. See you next stream!')
                     }).then(function(data) {
                             console.log('Goodbye message sent to #' + data);
                     }).catch(err => {
@@ -122,9 +111,44 @@ twitchClient.on("chat", function (channel, user, message, self) {
             }).catch(err => {
                 console.log('Error checking stream status: ' + err);
             });
+        // If the message is a scene list request
+        } else if (message.toLowerCase().startsWith('!scenelist')) {
+            obs.getSceneList().then((sceneList) => {
+                let sceneListNames = 'Available Scenes: ';
+                for (let scene of sceneList.scenes) {
+                    sceneListNames += `'${scene.name}', `;
+                }
+                sceneListNames = sceneListNames.slice(0, -2);
+                twitchClient.whisper(user.username, sceneListNames).then(function(data) {
+                    console.log(`Whispered ${data[0]} with message: "${data[1]}"`);
+                }).catch(function(err) {
+                    console.log('Error sending whisper: ' + err);
+                });
+            }).catch(err => {
+                console.log('Error checking stream status: ' + err);
+            });
         }
     }
 });
+
+// Set new scene
+function setNewScene(toScene) {
+    obs.setCurrentScene({'scene-name': toScene}).then(() => {
+        console.log('Set current scene to ' + toScene);
+    }).catch(err => {
+        console.log('Error changing scenes: ' + err);
+    });
+}
+
+// Start the stream and set the scene to the IRL start scene
+function startNewStream(sceneName) {
+    obs.startStreaming().then(() => {
+        console.log('STREAM STARTED');
+        setNewScene(sceneName);
+    }).catch(err => {
+        console.log('Error starting stream: ' + err);
+    });
+}
 
 // Catch all uncaught exceptions
 obs.on('error', err => {
