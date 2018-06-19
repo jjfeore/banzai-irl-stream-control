@@ -18,6 +18,11 @@ const nmsConfig = {
   http: {
     port: 8000,
     allow_origin: '*'
+  },
+  auth: {
+    play: true,
+    publish: true,
+    secret: process.env.RTMPPASS
   }
 };
  
@@ -31,14 +36,6 @@ obs.connect({
     password: process.env.OBSWSPASS
 }).then(() => {
     console.log(`Connected to OBS via Websocket`);
-    return obs.getSceneList();
-}).then((sceneList) => {
-    let sceneListNames = 'Available Scenes: ';
-    for (let scene of sceneList.scenes) {
-        sceneListNames += `'${scene.name}', `;
-    }
-    sceneListNames = sceneListNames.slice(0, -2);
-    console.log(sceneListNames);
 }).catch(err => {
     console.log('Error on OBS Websocket connect: ' + err);
 });
@@ -55,7 +52,7 @@ const twitchOptions = {
         username: process.env.TWITCHUSER,
         password: process.env.TWITCHPASS
     },
-    channels: ['#banzaibaby']
+    channels: ['#' + process.env.TWITCHUSER]
 };
 
 const twitchClient = new tmi.client(twitchOptions);
@@ -64,7 +61,8 @@ twitchClient.connect();
 // On RTMP connection to server
 nms.on('postConnect', (id, args) => {
     console.log('[NodeEvent on postConnect]', `id=${id} args=${JSON.stringify(args)}`);
-    let toScene = 'IRL';
+    // let toScene = 'IRL';
+    let toScene = process.env.IRLSCENE;
     userEndedStream = false;
 
     obs.getStreamingStatus().then(function (data) {
@@ -82,7 +80,8 @@ nms.on('doneConnect', (id, args) => {
 
     if (!userEndedStream) {
         console.log('RTMP connection lost without disconnect command');
-        setNewScene('Technical Difficulties');
+        // setNewScene('Technical Difficulties');
+        setNewScene(process.env.TECHSCENE);
     }
 });
 
