@@ -1,3 +1,5 @@
+require('dotenv').config();
+
 const crypto = require('crypto'),
     readlineSync = require('readline-sync');
 

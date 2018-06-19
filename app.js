@@ -4,7 +4,8 @@ const NodeMediaServer = require('node-media-server'),
     tmi = require('tmi.js'),
     OBSWebSocket = require('obs-websocket-js');
 
-let userEndedStream = false;
+let userEndedStream = false,
+    ignoreTechScene = false;
 
 // Configure Node media server
 const nmsConfig = {
@@ -79,18 +80,22 @@ nms.on('doneConnect', (id, args) => {
     console.log('[NodeEvent on doneConnect]', `id=${id} args=${JSON.stringify(args)}`);
 
     if (!userEndedStream) {
-        console.log('RTMP connection lost without disconnect command');
-        // setNewScene('Technical Difficulties');
-        setNewScene(process.env.TECHSCENE);
+        if (ignoreTechScene) {
+            ignoreTechScene = false;
+        } else {
+            console.log('RTMP connection lost without disconnect command');
+            setNewScene(process.env.TECHSCENE);
+        }
     }
 });
 
 // On Twitch message
 twitchClient.on('chat', function (channel, user, message, self) {
-    if (self || user.mod || user.badges.broadcasters == '1' || user.username == twitchClient.getUsername()) {
+    if (self || user.mod || (user.badges && user.badges.broadcasters && user.badges.broadcasters == '1') || user.username == twitchClient.getUsername()) {
         console.log('Parsing message from self or mod');
         // If the message is the switch scene command
         if (message.toLowerCase().startsWith('!scene ')) {
+            ignoreTechScene = true;
             setNewScene(message.slice(7));
         // If the message is the end stream command
         } else if (message.toLowerCase().startsWith('!disconnect')) {
@@ -100,7 +105,7 @@ twitchClient.on('chat', function (channel, user, message, self) {
                     userEndedStream = true;
                     obs.stopStreaming().then(() => {
                         console.log('STREAM STOPPED');
-                        return twitchClient.say('banzaibaby', 'Thanks for joining us. See you next stream!')
+                        return twitchClient.say(process.env.TWITCHUSER, 'Thanks for joining us. See you next stream!')
                     }).then(function(data) {
                             console.log('Goodbye message sent to #' + data);
                     }).catch(err => {
@@ -118,10 +123,10 @@ twitchClient.on('chat', function (channel, user, message, self) {
                     sceneListNames += `'${scene.name}', `;
                 }
                 sceneListNames = sceneListNames.slice(0, -2);
-                twitchClient.whisper(user.username, sceneListNames).then(function(data) {
-                    console.log(`Whispered ${data[0]} with message: "${data[1]}"`);
+                twitchClient.say(process.env.TWITCHUSER, sceneListNames).then(function(data) {
+                    console.log(`Sent available scene list to #"${data}"`);
                 }).catch(function(err) {
-                    console.log('Error sending whisper: ' + err);
+                    console.log('Error sending scene list: ' + err);
                 });
             }).catch(err => {
                 console.log('Error checking stream status: ' + err);
@@ -132,11 +137,13 @@ twitchClient.on('chat', function (channel, user, message, self) {
 
 // Set new scene
 function setNewScene(toScene) {
-    obs.setCurrentScene({'scene-name': toScene}).then(() => {
-        console.log('Set current scene to ' + toScene);
-    }).catch(err => {
-        console.log('Error changing scenes: ' + err);
-    });
+    if (ignoreTechScene || toScene == process.env.IRLSCENE) {
+        obs.setCurrentScene({'scene-name': toScene}).then(() => {
+            console.log('Set current scene to ' + toScene);
+        }).catch(err => {
+            console.log('Error changing scenes: ' + err);
+        });
+    }
 }
 
 // Start the stream and set the scene to the IRL start scene
