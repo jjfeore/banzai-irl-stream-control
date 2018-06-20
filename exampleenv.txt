@@ -1,13 +1,13 @@
-# This is the password you want to use for connecting to your server remotely.
+# This is the password you want to use for connecting to your server remotely. This can be whatever you want.
 RTMPPASS = 'YOUR PASSWORD HERE'
 
-# Once you setup the OBS WebSocket plugin. Enter the password you provide it here.
+# Enter the password you gave OBS when setting up the OBS WebSocket plugin.
 OBSWSPASS = 'YOUR OBS WEBSOCKET PASSWORD HERE'
 
-# This should just be your Twitch username
+# This should just be your Twitch username.
 TWITCHUSER = 'YOUR USERNAME ex. banzaibaby'
 
-# Go to https://twitchapps.com/tmi/ and generate an OAuth token to enter here
+# Go to https://twitchapps.com/tmi/ and generate an OAuth token to enter here.
 TWITCHPASS = 'YOUR OAUTH TOKEN ex. oauth:ho1j1o77blah3tba8tdonk9u7'
 
 # This needs to be the exact name of the OBS scene you want the stream to start on each time.
