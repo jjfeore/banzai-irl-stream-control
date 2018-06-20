@@ -61,8 +61,7 @@ twitchClient.connect();
 
 // On RTMP connection to server
 nms.on('postConnect', (id, args) => {
-    // console.log('[NodeEvent on postConnect]', `id=${id} args=${JSON.stringify(args)}`);
-    // let toScene = 'IRL';
+    console.log('[NodeEvent on postConnect]', `id=${id} args=${JSON.stringify(args)}`);
     let toScene = process.env.IRLSCENE;
     userEndedStream = false;
 
@@ -77,8 +76,7 @@ nms.on('postConnect', (id, args) => {
 
 // On RTMP disconnect from server
 nms.on('doneConnect', (id, args) => {
-    // console.log('[NodeEvent on doneConnect]', `id=${id} args=${JSON.stringify(args)}`);
-
+    console.log('[NodeEvent on doneConnect]', `id=${id} args=${JSON.stringify(args)}`);
     if (!userEndedStream) {
         // if (ignoreTechScene) {
         //     console.log('Ignoring Technical Difficulties scene');
