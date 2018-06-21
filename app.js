@@ -75,22 +75,33 @@ nms.on('postConnect', (id, args) => {
 });
 
 // On RTMP disconnect from server
-nms.on('doneConnect', (id, args) => {
-    console.log('[NodeEvent on doneConnect]', `id=${id} args=${JSON.stringify(args)}`);
-    if (!userEndedStream) {
-        // if (ignoreTechScene) {
-        //     console.log('Ignoring Technical Difficulties scene');
-        //     ignoreTechScene = false;
-        // } else {
+// nms.on('doneConnect', (id, args) => {
+//     console.log('[NodeEvent on doneConnect]', `id=${id} args=${JSON.stringify(args)}`);
+//     if (!userEndedStream) {
+//         // if (ignoreTechScene) {
+//         //     console.log('Ignoring Technical Difficulties scene');
+//         //     ignoreTechScene = false;
+//         // } else {
+//             console.log('RTMP connection lost without disconnect command');
+//             setNewScene(process.env.TECHSCENE);
+//         // }
+//     }
+// });
+
+// On RTMP stream unload
+nms.on('donePlay', (id, StreamPath, args) => {
+    console.log('[NodeEvent on donePlay]', `id=${id} StreamPath=${StreamPath} args=${JSON.stringify(args)}`);
+    obs.getCurrentScene().then(function (data) {
+        if (data.name != 'IRL' && !userEndedStream) {
             console.log('RTMP connection lost without disconnect command');
             setNewScene(process.env.TECHSCENE);
-        // }
-    }
+        }
+    });
 });
 
 // On Twitch message
 twitchClient.on('chat', function (channel, user, message, self) {
-    if (self || user.mod || (user.badges && user.badges.broadcasters && user.badges.broadcasters == '1') || user.username == twitchClient.getUsername()) {
+    if (self || (user.mod && process.env.ALLOWMOD == 1) || (user.badges && user.badges.broadcasters && user.badges.broadcasters == '1') || user.username == twitchClient.getUsername()) {
         console.log('Parsing message from self or mod');
         // If the message is the switch scene command
         if (message.toLowerCase().startsWith('!scene ')) {
@@ -127,6 +138,14 @@ twitchClient.on('chat', function (channel, user, message, self) {
                 }).catch(function(err) {
                     console.log('Error sending scene list: ' + err);
                 });
+            }).catch(err => {
+                console.log('Error checking stream status: ' + err);
+            });
+        // If the message is a request to turn on/off an audio source
+        } else if (message.toLowerCase().startsWith('!togglemute')) {
+            let audioSource = message.length > 12 ? message.slice(12) : process.env.DEFAULTAUDIO;
+            obs.getSceneList({'source' : audioSource}).then(() => {
+                console.log(`${audioSource} volume toggled`);
             }).catch(err => {
                 console.log('Error checking stream status: ' + err);
             });

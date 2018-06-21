@@ -15,3 +15,9 @@ IRLSCENE = 'YOUR SCENE NAME ex. IRL'
 
 # This needs to be the exact name of the OBS scene you want the stream to go to on technical difficulties.
 TECHSCENE = 'YOUR SCENE NAME ex. Technical Difficulties'
+
+# If you do not wish to allow mods to change scenes and toggle volume, set this to 0.
+ALLOWMOD = 1
+
+# This is the default audio source for !togglemute to turn on and off.
+DEFAULTAUDIO = 'AUDIO SOURCE NAME ex. Desktop Audio'
