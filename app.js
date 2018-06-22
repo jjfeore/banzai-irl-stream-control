@@ -5,7 +5,7 @@ const NodeMediaServer = require('node-media-server'),
     OBSWebSocket = require('obs-websocket-js');
 
 let userEndedStream = false,
-    ignoreTechScene = false;
+    currScene = '';
 
 // Configure Node media server
 const nmsConfig = {
@@ -19,12 +19,12 @@ const nmsConfig = {
   http: {
     port: 8000,
     allow_origin: '*'
-  },
-  auth: {
-    play: true,
-    publish: true,
-    secret: process.env.RTMPPASS
   }
+//   auth: {
+//     play: true,
+//     publish: true,
+//     secret: process.env.RTMPPASS
+//   }
 };
  
 let nms = new NodeMediaServer(nmsConfig);
@@ -75,28 +75,12 @@ nms.on('postConnect', (id, args) => {
 });
 
 // On RTMP disconnect from server
-// nms.on('doneConnect', (id, args) => {
-//     console.log('[NodeEvent on doneConnect]', `id=${id} args=${JSON.stringify(args)}`);
-//     if (!userEndedStream) {
-//         // if (ignoreTechScene) {
-//         //     console.log('Ignoring Technical Difficulties scene');
-//         //     ignoreTechScene = false;
-//         // } else {
-//             console.log('RTMP connection lost without disconnect command');
-//             setNewScene(process.env.TECHSCENE);
-//         // }
-//     }
-// });
-
-// On RTMP stream unload
-nms.on('donePlay', (id, StreamPath, args) => {
-    console.log('[NodeEvent on donePlay]', `id=${id} StreamPath=${StreamPath} args=${JSON.stringify(args)}`);
-    obs.getCurrentScene().then(function (data) {
-        if (data.name != 'IRL' && !userEndedStream) {
-            console.log('RTMP connection lost without disconnect command');
-            setNewScene(process.env.TECHSCENE);
-        }
-    });
+nms.on('doneConnect', (id, args) => {
+    console.log('[NodeEvent on doneConnect]', `id=${id} args=${JSON.stringify(args)}`);
+    if ((currScene == 'IRL') && !userEndedStream) {
+        console.log('RTMP connection lost without disconnect command');
+        setNewScene(process.env.TECHSCENE);
+    }
 });
 
 // On Twitch message
@@ -144,7 +128,7 @@ twitchClient.on('chat', function (channel, user, message, self) {
         // If the message is a request to turn on/off an audio source
         } else if (message.toLowerCase().startsWith('!togglemute')) {
             let audioSource = message.length > 12 ? message.slice(12) : process.env.DEFAULTAUDIO;
-            obs.getSceneList({'source' : audioSource}).then(() => {
+            obs.toggleMute({'source' : audioSource}).then(() => {
                 console.log(`${audioSource} volume toggled`);
             }).catch(err => {
                 console.log('Error checking stream status: ' + err);
@@ -155,13 +139,12 @@ twitchClient.on('chat', function (channel, user, message, self) {
 
 // Set new scene
 function setNewScene(toScene) {
-    if (ignoreTechScene || toScene == process.env.IRLSCENE) {
-        obs.setCurrentScene({'scene-name': toScene}).then(() => {
-            console.log('Set current scene to ' + toScene);
-        }).catch(err => {
-            console.log('Error changing scenes: ' + err);
-        });
-    }
+    currScene = toScene;
+    obs.setCurrentScene({'scene-name': toScene}).then(() => {
+        console.log('Set current scene to ' + toScene);
+    }).catch(err => {
+        console.log('Error changing scenes: ' + err);
+    });
 }
 
 // Start the stream and set the scene to the IRL start scene
